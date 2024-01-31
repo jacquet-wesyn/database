@@ -1,120 +1,56 @@
+count_counties = 100
+customers_per_country = 1
+
+filled_quote_per_customer = 10
+product_per_quotes = 10
+total_quote_per_customer = 100
+
+filled_invoice_per_customer = 10
+product_per_invoices = 10
+total_invoice_per_per_customer = 100
+
+filled_credit_note_per_customer = 10
+product_per_credit_notes = 10
+total_credit_note_per_per_customer = 100
+
+tax_codes = (1, 2, 3, 4, 5, 8, )
+
+# imports and inits
+
+from datetime import datetime
 from math import floor
 from typing import Any
-import pymysql.cursors
 from uuid import uuid4
-from itertools import islice
-from random import SystemRandom
-from secrets import token_urlsafe
-import tables
 import BCP47
-from datetime import datetime
+import itertools
+import tables
 
-random = SystemRandom()
-
-# Connect to the database
+import pymysql
 connection = pymysql.connect(
 	host='localhost',
 	port=3636,
 	user='dktProApi',
 	password='localDevPassword',
 	database='dkt_pro_api',
-	cursorclass=pymysql.cursors.Cursor
+	autocommit=False,
 )
+
+from random import SystemRandom
+random = SystemRandom()
 
 from json import load
 from pathlib import Path
-
+diceware: list[str] = list()
 with open(Path(__file__).parent / 'diceware.json', mode='br') as file:
 	diceware = load(file)
 
-def batched(iterable, n):
-	# batched('ABCDEFG', 3) --> ABC DEF G
-	if n < 1:
-		raise ValueError('n must be at least one')
-	it = iter(iterable)
-	while batch := tuple(islice(it, n)):
-		yield batch
-
-Products = dict[int, dict[int, set[int]]]
 ProductIds = dict[int, dict[int, dict[int, str]]]
 
-def create_products() -> Products:
-	fanout = 36
-	
-	sku_ids = batched(random.sample(range(1_000_000, 2_000_000), fanout *fanout *fanout), fanout)
-	model_ids = batched(random.sample(range(3_000_000, 4_000_000), fanout *fanout), fanout)
-	product_ids = batched(random.sample(range(5_000_000, 6_000_000), fanout), fanout)
-	
-	return {
-		product_id: {
-			model_id: {
-				sku_id
-				for sku_id in next(sku_ids)
-			}
-			for model_id in next(model_ids)
-		}
-		for product_id in next(product_ids)
-	}
-
-def add_product(
-	quote_id: None | str,
-	invoice_id: None | str,
-	products: Products,
-	position: int,
-):
-	display_name = ' '.join(random.sample(diceware, random.randint(6, 12)))
-	product_id = random.choice(tuple(products.keys()))
-	model_id = random.choice(tuple(products[product_id].keys()))
-	sku_id = random.choice(tuple(products[product_id][model_id]))
-	
-	tax_code = random.choice((1, 2, 3, 4, 5, 8, ))
-	price = random.randint(1_00, 1_000_00) /100
-	price_overwrite = random.randint(1_00, 1_000_00) /100
-	quantity = random.randint(1, 196883)
-	unit_reduc_rate = random.random()
-	
-	return (
-		uuid4()
-		, quote_id
-		, invoice_id
-		, display_name
-		, product_id
-		, model_id
-		, sku_id
-		, price
-		, price_overwrite
-		, tax_code
-		, quantity
-		, None
-		, unit_reduc_rate
-		, position
-		, None
-		, None
-		, '2000-01-01'
-		, '2000-01-01'
-		, None
-		, None
-		, '{}'
-		, None
-	)
-
-def add_products(
-	quote_id: None | str,
-	invoice_id: None | str,
-	products: Products,
-):
-	for position in range(random.randint(72, 72*2)):
-		yield add_product(
-			quote_id,
-			invoice_id,
-			products,
-			position,
-		)
 
 # single scalar generators
 
 def types_varchar(length: int):
-	return token_urlsafe((length *3 //4) +1).replace('_', '').replace('-', '')[0:length]
+	return ' '.join(random.choices(diceware, k=3))[0:length]
 
 def types_longtext():
 	return types_varchar(420)
@@ -162,6 +98,16 @@ def random_country(
 		'created_at': types_datetime(), #datetime NOT NULL,
 		'updated_at': types_datetime(), #datetime NOT NULL,
 		'licence_end_date': types_datetime(), #datetime DEFAULT NULL,
+	}
+
+def random_country_vat(code: int, country: tables.TD_country) -> tables.TD_country_vat:
+	rate = 0.0 if 8 == code else random.random()
+	
+	return {
+		'id': str(uuid4()),
+		'country_id': types_char(country), #char(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '(DC2Type:uuid)',
+		'code': code, #int NOT NULL,
+		'rate': rate, #double NOT NULL,
 	}
 
 def random_user() -> tables.TD_user:
@@ -319,7 +265,7 @@ def random_product(
 	sku_price = random.randint(1_00, 1_000_00) /100
 	price_overwrite = random.randint(1_00, 1_000_00) /100
 	if random.randint(0, 6) < 1: price_overwrite = None
-	tax_code = random.choice((1, 2, 3, 4, 5, 8, ))
+	tax_code = random.choice(tax_codes)
 	quantity = random.randint(1, 1_000)
 	unit_reduc_rate = random.random()
 	if random.randint(0, 6) < 1: unit_reduc_rate = 0.0
@@ -358,6 +304,7 @@ def random_product(
 # utils
 
 def make_query(cursor, tbl_name, table):
+	print(f'''INSERT INTO `{tbl_name}` {len(table)}''', end='…', flush=True)
 	
 	col_names = ", ".join(
 		f"""`{key}`"""
@@ -369,56 +316,41 @@ def make_query(cursor, tbl_name, table):
 		for _key in table[0].keys()
 	)
 	
-	print(f"""INSERT INTO `{tbl_name}` …{len(table)}""")
-	
 	cursor.executemany(
 		f"""INSERT INTO `{tbl_name}` ({col_names}) VALUES ({value_list})""",
 		(tuple(row.values()) for row in table)
 	)
-
-count_counties = 6
-customers_per_country = 36
-quote_per_customer = 36
-product_per_quotes = 12
-nonquote_per_customer = 36
-product_per_nonquotes = 12
+	
+	print('\033[D ', flush=True)
 
 def make_product_ids() -> ProductIds:
 	products = (
 		(
 			count_counties
 			* customers_per_country
-			* quote_per_customer
+			* filled_quote_per_customer
 			* product_per_quotes
 		)
 		+ (
 			count_counties
 			* customers_per_country
-			* nonquote_per_customer
-			* product_per_nonquotes
+			* filled_invoice_per_customer
+			* product_per_invoices
 		)
 		+ (
 			count_counties
 			* customers_per_country
-			* nonquote_per_customer
-			* product_per_nonquotes
+			* filled_credit_note_per_customer
+			* product_per_credit_notes
 		)
 	)
 	
 	fanout = max(2, floor((products) ** (1/3)))
 	print(f'''{fanout=}''')
 
-	def batched(iterable, n):
-		# batched('ABCDEFG', 3) --> ABC DEF G
-		if n < 1:
-			raise ValueError('n must be at least one')
-		it = iter(iterable)
-		while batch := tuple(islice(it, n)):
-			yield batch
-
-	sku_ids = batched(random.sample(range(1_000_000, 2_000_000), fanout *fanout *fanout), fanout)
-	model_ids = batched(random.sample(range(3_000_000, 4_000_000), fanout *fanout), fanout)
-	product_ids = batched(random.sample(range(5_000_000, 6_000_000), (fanout-1)), (fanout-1))
+	sku_ids = itertools.batched(random.sample(range(1_000_000, 2_000_000), fanout *fanout *fanout), fanout)
+	model_ids = itertools.batched(random.sample(range(3_000_000, 4_000_000), fanout *fanout), fanout)
+	product_ids = itertools.batched(random.sample(range(5_000_000, 6_000_000), (fanout-1)), (fanout-1))
 	
 	return {
 		product_id: {
@@ -439,6 +371,7 @@ with connection:
 		
 		statements = [
 			'TRUNCATE `country`',
+			'TRUNCATE `country_vat`',
 			'TRUNCATE `user`',
 			'TRUNCATE `customer`',
 			'TRUNCATE `billing_address`',
@@ -461,16 +394,20 @@ with connection:
 			had_error = False
 			for statement in statements:
 				try:
+					print(statement, end='…', flush=True)
 					cursor.execute(statement)
+					print('\033[D ', flush=True)
 				except:
 					had_error = True
+					raise
 		
 		cursor.execute('SET foreign_key_checks = 1')
 	connection.commit()
-		
-	print("TRUNCATE done…", flush=True)
+	
+	print("TRUNCATE done", flush=True)
 	
 	countries: list[tables.TD_country] = list()
+	country_vats: list[tables.TD_country_vat] = list()
 	users: list[tables.TD_user] = list()
 	customers: list[tables.TD_customer] = list()
 	billing_addresses: list[tables.TD_billing_address] = list()
@@ -485,17 +422,27 @@ with connection:
 		country = random_country()
 		countries.append(country)
 		
-		user = random_user()
-		users.append(user)
+		for tax_code in tax_codes:
+			country_vat = random_country_vat(code=tax_code, country=country)
+			country_vats.append(country_vat)
 		
 		for index in range(customers_per_country):
-			customer = random_customer(country=country, created_by=user)
+			user = random_user()
+			users.append(user)
+		
+		copy_users = list(users)
+		random.shuffle(copy_users)
+		random_users = itertools.cycle(copy_users)
+		
+		for index in range(customers_per_country):
+			customer = random_customer(country=country, created_by=next(random_users))
 			customers.append(customer)
 			
 			billing_address = random_billing_address(customer=customer)
 			billing_addresses.append(billing_address)
 			
-			for index in range(quote_per_customer):
+			# quotes
+			for index in range(filled_quote_per_customer):
 				quote = random_quote(customer=customer, billing_address=billing_address, country=country)
 				quotes.append(quote)
 				
@@ -503,25 +450,44 @@ with connection:
 					product = random_product(product_ids, position=index, quote=quote, invoice=None, credit_note=None)
 					products.append(product)
 			
-			for index in range(nonquote_per_customer):
+			for index in range(filled_quote_per_customer, total_quote_per_customer):
+				quote = random_quote(customer=customer, billing_address=billing_address, country=country)
+				quotes.append(quote)
+			
+			# invoices
+			for index in range(filled_invoice_per_customer):
 				invoice = random_invoice(customer=customer, billing_address=billing_address, country=country)
 				invoices.append(invoice)
 				
-				for index in range(product_per_nonquotes):
+				for index in range(product_per_invoices):
 					product = random_product(product_ids, position=index, quote=None, invoice=invoice, credit_note=None)
 					products.append(product)
-				
-				credit_note = random_credit_note(invoice=invoice, country=country)
+			
+			for index in range(filled_invoice_per_customer, total_invoice_per_per_customer):
+				invoice = random_invoice(customer=customer, billing_address=billing_address, country=country)
+				invoices.append(invoice)
+			
+			
+			# credit_notes
+			copy_invoices = list(invoices)
+			random.shuffle(copy_invoices)
+			random_invoices = itertools.cycle(copy_invoices)
+			
+			for index in range(filled_credit_note_per_customer):
+				credit_note = random_credit_note(invoice=next(random_invoices), country=country)
 				credit_notes.append(credit_note)
 				
-				for index in range(product_per_nonquotes):
+				for index in range(product_per_credit_notes):
 					product = random_product(product_ids, position=index, quote=None, invoice=None, credit_note=credit_note)
 					products.append(product)
-	
-	print("and now we wait…", flush=True)
+			
+			for index in range(filled_credit_note_per_customer, total_credit_note_per_per_customer):
+				credit_note = random_credit_note(invoice=next(random_invoices), country=country)
+				credit_notes.append(credit_note)
 	
 	with connection.cursor() as cursor:
 		make_query(cursor, 'country', countries)
+		make_query(cursor, 'country_vat', country_vats)
 		make_query(cursor, 'user', users)
 		make_query(cursor, 'customer', customers)
 		make_query(cursor, 'billing_address', billing_addresses)
@@ -531,3 +497,4 @@ with connection:
 		make_query(cursor, 'product', products)
 	
 	connection.commit()
+	print(connection.get_autocommit())
