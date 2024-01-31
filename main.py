@@ -446,6 +446,11 @@ with connection:
 			'TRUNCATE `invoice`',
 			'TRUNCATE `credit_note`',
 			'TRUNCATE `product`',
+			
+			'TRUNCATE `country_stats`',
+			'TRUNCATE `customer_stats`',
+			'TRUNCATE `product_stats`',
+			'TRUNCATE `user_stats`',
 		]
 		statements.reverse()
 		
@@ -463,7 +468,7 @@ with connection:
 		cursor.execute('SET foreign_key_checks = 1')
 	connection.commit()
 		
-	print("TRUNCATE TABLE done…", flush=True)
+	print("TRUNCATE done…", flush=True)
 	
 	countries: list[tables.TD_country] = list()
 	users: list[tables.TD_user] = list()
