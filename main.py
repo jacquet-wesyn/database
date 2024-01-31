@@ -224,6 +224,8 @@ def random_quote(
 	delivery_decath_store: None|tables.TD_decath_store=None,
 	assigned_to: None|tables.TD_decathlon_user=None,
 ) -> tables.TD_quote:
+	status_code = random.choice(('CAN', 'DON', 'DRA', 'EXP', 'ISS', 'NEW', 'PEN', 'PRO', 'THB', ))
+	
 	return {
 		'id': str(uuid4()),
 		'customer_id': types_char(customer), #char(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '(DC2Type:uuid)',
@@ -233,7 +235,7 @@ def random_quote(
 		'delivery_method_code': 'MAG', #varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL,
 		'created_by': types_char(created_by), #char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
 		'origin_code': None, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-		'status_code': None, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+		'status_code': status_code, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
 		'shipping_cost_id': types_char(shipping_cost), #char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
 		'delivery_decath_store_id': types_char(delivery_decath_store), #char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
 		'number': types_varchar(15), #varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -258,6 +260,8 @@ def random_invoice(
 	delivery_decath_store: None|tables.TD_decath_store=None,
 	assigned_to: None|tables.TD_decathlon_user=None,
 ) -> tables.TD_invoice:
+	status_code = random.choice(('CAN', 'PAI', 'PEA', 'THB', ))
+	
 	return {
 		'id': str(uuid4()),
 		'country_id': types_char(country), #char(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '(DC2Type:uuid)',
@@ -267,7 +271,7 @@ def random_invoice(
 		'delivery_address_id': types_char(delivery_address), #char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
 		'customer_id': types_char(customer), #char(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '(DC2Type:uuid)',
 		'created_by': types_char(created_by), #char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
-		'status_code': None, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+		'status_code': status_code, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
 		'shipping_cost_id': types_char(shipping_cost), #char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
 		'delivery_decath_store_id': types_char(delivery_decath_store), #char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
 		'number': types_varchar(15), #varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -287,11 +291,13 @@ def random_credit_note(
 	billing_address: None|tables.TD_billing_address=None,
 	assigned_to: None|tables.TD_decathlon_user=None,
 ) -> tables.TD_credit_note:
+	status_code = random.choice(('CAN', 'ISS', 'PEN', 'SEN', ))
+	
 	return {
 		'id': str(uuid4()),
 		'invoice_id': types_char(invoice), #char(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '(DC2Type:uuid)',
 		'country_id': types_char(country), #char(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '(DC2Type:uuid)',
-		'status_code': None, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+		'status_code': status_code, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
 		'created_by': types_char(created_by), #char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
 		'number': types_varchar(15), #varchar(15) COLLATE utf8mb4_unicode_ci NOT NULL,
 		'reason': None, #varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
