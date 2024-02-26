@@ -1,16 +1,16 @@
-count_counties = 100
-customers_per_country = 1
+count_counties = 10
+customers_per_country = 10
 
 filled_quote_per_customer = 10
-product_per_quotes = 10
+product_per_quotes = 100
 total_quote_per_customer = 100
 
 filled_invoice_per_customer = 10
-product_per_invoices = 10
+product_per_invoices = 100
 total_invoice_per_per_customer = 100
 
 filled_credit_note_per_customer = 10
-product_per_credit_notes = 10
+product_per_credit_notes = 100
 total_credit_note_per_per_customer = 100
 
 tax_codes = (1, 2, 3, 4, 5, 8, )
@@ -27,7 +27,7 @@ import tables
 
 import pymysql
 connection = pymysql.connect(
-	host='localhost',
+	host='host.docker.internal',
 	port=3636,
 	user='dktProApi',
 	password='localDevPassword',
@@ -345,7 +345,7 @@ def make_product_ids() -> ProductIds:
 		)
 	)
 	
-	fanout = max(2, floor((products) ** (1/3)))
+	fanout = 10
 	print(f'''{fanout=}''')
 
 	sku_ids = itertools.batched(random.sample(range(1_000_000, 2_000_000), fanout *fanout *fanout), fanout)
