@@ -364,13 +364,14 @@ def make_product_ids() -> ProductIds:
 	}
 
 with connection:
+	countries: list[tables.TD_country] = list()
+	
 	with connection.cursor() as cursor:
 		# this TRUNCATE too much and i am not rebuilding the tables that get shunted
 		cursor.execute('''SHOW TABLES''')
 		statements = list(f'''TRUNCATE `{table}`''' for (table, ) in cursor.fetchall())
 		
 		statements = [
-			'TRUNCATE `country`',
 			'TRUNCATE `country_vat`',
 			'TRUNCATE `user`',
 			'TRUNCATE `customer`',
@@ -401,12 +402,21 @@ with connection:
 					had_error = True
 					raise
 		
+		print('SELECT `country`', end='…', flush=True)
+		cursor.execute('SELECT id FROM `country`')
+		for (country_id, ) in cursor.fetchall():
+			country = random_country()
+			country['id'] = country_id
+			countries.append(country)
+		
+		count_counties = len(countries)
+		print('\033[D', count_counties, flush=True)
+		
 		cursor.execute('SET foreign_key_checks = 1')
 	connection.commit()
 	
 	print("TRUNCATE done", flush=True)
 	
-	countries: list[tables.TD_country] = list()
 	country_vats: list[tables.TD_country_vat] = list()
 	users: list[tables.TD_user] = list()
 	customers: list[tables.TD_customer] = list()
@@ -418,10 +428,7 @@ with connection:
 	
 	product_ids = make_product_ids()
 	
-	for tag in random.sample(BCP47.tags, k=count_counties):
-		country = random_country()
-		countries.append(country)
-		
+	for country in countries:
 		for tax_code in tax_codes:
 			country_vat = random_country_vat(code=tax_code, country=country)
 			country_vats.append(country_vat)
@@ -486,7 +493,6 @@ with connection:
 				credit_notes.append(credit_note)
 	
 	with connection.cursor() as cursor:
-		make_query(cursor, 'country', countries)
 		make_query(cursor, 'country_vat', country_vats)
 		make_query(cursor, 'user', users)
 		make_query(cursor, 'customer', customers)
