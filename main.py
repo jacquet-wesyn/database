@@ -371,9 +371,12 @@ with connection:
 		cursor.execute('''SHOW TABLES''')
 		statements = list(f'''TRUNCATE `{table}`''' for (table, ) in cursor.fetchall())
 		
+		print('DELETE `user`', end='…', flush=True)
+		cursor.execute('DELETE FROM `user` WHERE id NOT IN (SELECT id FROM `decathlon_user`)')
+		print('\033[D ', flush=True)
+		
 		statements = [
 			'TRUNCATE `country_vat`',
-			'TRUNCATE `user`',
 			'TRUNCATE `customer`',
 			'TRUNCATE `billing_address`',
 			'TRUNCATE `quote`',
