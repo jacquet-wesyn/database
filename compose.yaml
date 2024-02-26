@@ -1,4 +1,6 @@
 services:
-  196883:
+  service:
     build:
       context: .
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
