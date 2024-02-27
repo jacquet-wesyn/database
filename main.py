@@ -165,12 +165,13 @@ def random_quote(
 	billing_address: tables.TD_billing_address,
 	country: tables.TD_country,
 	delivery_address: None|tables.TD_delivery_address=None,
-	created_by: None|tables.TD_user=None,
+	created_by: tables.TD_user=None,
 	shipping_cost: None|tables.TD_shipping_cost=None,
 	delivery_decath_store: None|tables.TD_decath_store=None,
 	assigned_to: None|tables.TD_decathlon_user=None,
 ) -> tables.TD_quote:
 	status_code = random.choice(('CAN', 'DON', 'DRA', 'EXP', 'ISS', 'NEW', 'PEN', 'PRO', 'THB', ))
+	origin_code = random.choice(('OTH','PHO','STO'))
 	
 	return {
 		'id': str(uuid4()),
@@ -180,7 +181,7 @@ def random_quote(
 		'country_id': types_char(country), #char(36) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '(DC2Type:uuid)',
 		'delivery_method_code': 'MAG', #varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL,
 		'created_by': types_char(created_by), #char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
-		'origin_code': None, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+		'origin_code': origin_code, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
 		'status_code': status_code, #varchar(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
 		'shipping_cost_id': types_char(shipping_cost), #char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
 		'delivery_decath_store_id': types_char(delivery_decath_store), #char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '(DC2Type:uuid)',
@@ -300,9 +301,6 @@ def random_product(
 		'taxes': '{}', #json NOT NULL,
 		'dk_article_id': types_varchar(64), #varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
 	}
-
-# utils
-
 def make_query(cursor, tbl_name, table):
 	print(f'''INSERT INTO `{tbl_name}` {len(table)}''', end='…', flush=True)
 	
@@ -453,7 +451,7 @@ with connection:
 			
 			# quotes
 			for index in range(filled_quote_per_customer):
-				quote = random_quote(customer=customer, billing_address=billing_address, country=country)
+				quote = random_quote(customer=customer, billing_address=billing_address, country=country, created_by=next(random_users))
 				quotes.append(quote)
 				
 				for index in range(product_per_quotes):
@@ -461,7 +459,7 @@ with connection:
 					products.append(product)
 			
 			for index in range(filled_quote_per_customer, total_quote_per_customer):
-				quote = random_quote(customer=customer, billing_address=billing_address, country=country)
+				quote = random_quote(customer=customer, billing_address=billing_address, country=country, created_by=next(random_users))
 				quotes.append(quote)
 			
 			# invoices
